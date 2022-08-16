@@ -1,0 +1,64 @@
+<html>
+<head>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: sans-serif;
+        }
+
+        #inDiv {
+            padding: 8px;
+            margin-bottom: 32px;
+        }
+        
+        #inData {
+            width: 60%;
+            height: 40px;
+            background-color: grey;
+        }
+
+    </style>
+    <script type="text/javascript" src="lib/memory.js"></script>
+    <script type="text/javascript">
+        let mem = new Memory();
+        mem.loadAllNodes();
+
+        function listNodes() {
+            for(let key in mem.nodes) {
+                let d = document.createElement('div');
+                d.innerHTML = mem.nodes[key].text;
+                document.body.appendChild(d);
+            }
+        }
+
+        function readInputData() {
+            let data = document.getElementById("inData").value;
+
+            mem.saveNode({'id': mem.nextId(), 'text': data, 'date': new Date()});
+
+            document.getElementById("inData").value = "";
+        }
+    </script>
+
+</head>
+
+<body>
+<p>Hello world</p>
+<div id="inDiv">
+    <input id="inData" />
+</div>
+<script type="text/javascript">
+    let input = document.getElementById("inData");
+    input.focus();
+    input.addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            readInputData();
+        }
+    });
+
+    listNodes();
+</script>
+</body>
+</html>
