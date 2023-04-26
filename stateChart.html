@@ -1,0 +1,534 @@
+
+  <!DOCTYPE html>
+  <html lang="en">
+  <body>
+  <script src="https://unpkg.com/gojs@2.3.5/release/go.js"></script>
+  <p>
+    This is a minimalist HTML and JavaScript skeleton of the GoJS Sample
+    <a href="https://gojs.net/latest/samples/stateChart.html">stateChart.html</a>. It was automatically generated from a button on the sample page,
+    and does not contain the full HTML. It is intended as a starting point to adapt for your own usage.
+    For many samples, you may need to inspect the
+    <a href="https://github.com/NorthwoodsSoftware/GoJS/blob/master/samples/stateChart.html">full source on Github</a>
+    and copy other files or scripts.
+  </p>
+  <div id="allSampleContent" class="p-4 w-full">
+  <script id="code">
+    function init() {
+
+      // Since 2.2 you can also author concise templates with method chaining instead of GraphObject.make
+      // For details, see https://gojs.net/latest/intro/buildingObjects.html
+      const $ = go.GraphObject.make;  // for conciseness in defining templates
+
+      // some constants that will be reused within templates
+      var roundedRectangleParams = {
+        parameter1: 2,  // set the rounded corner
+        spot1: go.Spot.TopLeft, spot2: go.Spot.BottomRight  // make content go all the way to inside edges of rounded corners
+      };
+
+      myDiagram =
+        $(go.Diagram, "myDiagramDiv",  // must name or refer to the DIV HTML element
+          {
+            "animationManager.initialAnimationStyle": go.AnimationManager.None,
+            "InitialAnimationStarting": e => {
+                var animation = e.subject.defaultAnimation;
+                animation.easing = go.Animation.EaseOutExpo;
+                animation.duration = 900;
+                animation.add(e.diagram, 'scale', 0.1, 1);
+                animation.add(e.diagram, 'opacity', 0, 1);
+            },
+
+            // have mouse wheel events zoom in and out instead of scroll up and down
+            "toolManager.mouseWheelBehavior": go.ToolManager.WheelZoom,
+            // support double-click in background creating a new node
+            "clickCreatingTool.archetypeNodeData": { text: "new node" },
+            // enable undo & redo
+            "undoManager.isEnabled": true,
+            positionComputation: (diagram, pt) => {
+              return new go.Point(Math.floor(pt.x), Math.floor(pt.y));
+            }
+          });
+
+      // when the document is modified, add a "*" to the title and enable the "Save" button
+      myDiagram.addDiagramListener("Modified", e => {
+        var button = document.getElementById("SaveButton");
+        if (button) button.disabled = !myDiagram.isModified;
+        var idx = document.title.indexOf("*");
+        if (myDiagram.isModified) {
+          if (idx < 0) document.title += "*";
+        } else {
+          if (idx >= 0) document.title = document.title.slice(0, idx);
+        }
+      });
+
+      // define the Node template
+      myDiagram.nodeTemplate =
+        $(go.Node, "Auto",
+          {
+            locationSpot: go.Spot.Top,
+            isShadowed: true, shadowBlur: 1,
+            shadowOffset: new go.Point(0, 1),
+            shadowColor: "rgba(0, 0, 0, .14)"
+          },
+          new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
+          // define the node's outer shape, which will surround the TextBlock
+          $(go.Shape, "RoundedRectangle", roundedRectangleParams,
+            {
+              name: "SHAPE", fill: "#ffffff", strokeWidth: 0,
+              stroke: null,
+              portId: "",  // this Shape is the Node's port, not the whole Node
+              fromLinkable: true, fromLinkableSelfNode: true, fromLinkableDuplicates: true,
+              toLinkable: true, toLinkableSelfNode: true, toLinkableDuplicates: true,
+              cursor: "pointer"
+            }),
+          $(go.TextBlock,
+            {
+              font: "bold small-caps 11pt helvetica, bold arial, sans-serif", margin: 7, stroke: "rgba(0, 0, 0, .87)",
+              editable: true  // editing the text automatically updates the model data
+            },
+            new go.Binding("text").makeTwoWay())
+        );
+
+
+      // unlike the normal selection Adornment, this one includes a Button
+      myDiagram.nodeTemplate.selectionAdornmentTemplate =
+        $(go.Adornment, "Spot",
+          $(go.Panel, "Auto",
+            $(go.Shape, "RoundedRectangle", roundedRectangleParams,
+            { fill: null, stroke: "#7986cb", strokeWidth: 3 }),
+            $(go.Placeholder)  // a Placeholder sizes itself to the selected Node
+          ),
+          // the button to create a "next" node, at the top-right corner
+          $("Button",
+            {
+              alignment: go.Spot.TopRight,
+              click: addNodeAndLink  // this function is defined below
+            },
+            $(go.Shape, "PlusLine", { width: 6, height: 6 })
+          ) // end button
+        ); // end Adornment
+
+      myDiagram.nodeTemplateMap.add("Start",
+        $(go.Node, "Spot", { desiredSize: new go.Size(75, 75) },
+          new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
+          $(go.Shape, "Circle",
+            {
+              fill: "#52ce60", /* green */
+              stroke: null,
+              portId: "",
+              fromLinkable: true, fromLinkableSelfNode: true, fromLinkableDuplicates: true,
+              toLinkable: true, toLinkableSelfNode: true, toLinkableDuplicates: true,
+              cursor: "pointer"
+            }),
+          $(go.TextBlock, "Start",
+            {
+              font: "bold 16pt helvetica, bold arial, sans-serif",
+              stroke: "whitesmoke"
+            })
+        )
+      );
+
+      myDiagram.nodeTemplateMap.add("End",
+        $(go.Node, "Spot", { desiredSize: new go.Size(75, 75) },
+          new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
+          $(go.Shape, "Circle",
+            {
+              fill: "maroon",
+              stroke: null,
+              portId: "",
+              fromLinkable: true, fromLinkableSelfNode: true, fromLinkableDuplicates: true,
+              toLinkable: true, toLinkableSelfNode: true, toLinkableDuplicates: true,
+              cursor: "pointer"
+            }),
+          $(go.Shape, "Circle", { fill: null, desiredSize: new go.Size(65, 65), strokeWidth: 2, stroke: "whitesmoke" }),
+          $(go.TextBlock, "End",
+            {
+              font: "bold 16pt helvetica, bold arial, sans-serif",
+              stroke: "whitesmoke"
+            })
+        )
+      );
+
+      // clicking the button inserts a new node to the right of the selected node,
+      // and adds a link to that new node
+      function addNodeAndLink(e, obj) {
+        var adornment = obj.part;
+        var diagram = e.diagram;
+        diagram.startTransaction("Add State");
+
+        // get the node data for which the user clicked the button
+        var fromNode = adornment.adornedPart;
+        var fromData = fromNode.data;
+        // create a new "State" data object, positioned off to the right of the adorned Node
+        var toData = { text: "new" };
+        var p = fromNode.location.copy();
+        p.x += 200;
+        toData.loc = go.Point.stringify(p);  // the "loc" property is a string, not a Point object
+        // add the new node data to the model
+        var model = diagram.model;
+        model.addNodeData(toData);
+
+        // create a link data from the old node data to the new node data
+        var linkdata = {
+          from: model.getKeyForNodeData(fromData),  // or just: fromData.id
+          to: model.getKeyForNodeData(toData),
+          text: "transition"
+        };
+        // and add the link data to the model
+        model.addLinkData(linkdata);
+
+        // select the new Node
+        var newnode = diagram.findNodeForData(toData);
+        diagram.select(newnode);
+
+        diagram.commitTransaction("Add State");
+
+        // if the new node is off-screen, scroll the diagram to show the new node
+        diagram.scrollToRect(newnode.actualBounds);
+      }
+
+      // replace the default Link template in the linkTemplateMap
+      myDiagram.linkTemplate =
+        $(go.Link,  // the whole link panel
+          {
+            curve: go.Link.Bezier,
+            adjusting: go.Link.Stretch,
+            reshapable: true, relinkableFrom: true, relinkableTo: true,
+            toShortLength: 3
+          },
+          new go.Binding("points").makeTwoWay(),
+          new go.Binding("curviness"),
+          $(go.Shape,  // the link shape
+            { strokeWidth: 1.5 },
+            new go.Binding('stroke', 'progress', progress => progress ? "#52ce60" /* green */ : 'black'),
+            new go.Binding('strokeWidth', 'progress', progress => progress ? 2.5 : 1.5)),
+          $(go.Shape,  // the arrowhead
+            { toArrow: "standard", stroke: null },
+            new go.Binding('fill', 'progress', progress => progress ? "#52ce60" /* green */ : 'black')),
+          $(go.Panel, "Auto",
+            $(go.Shape,  // the label background, which becomes transparent around the edges
+              {
+                fill: $(go.Brush, "Radial",
+                  { 0: "rgb(245, 245, 245)", 0.7: "rgb(245, 245, 245)", 1: "rgba(245, 245, 245, 0)" }),
+                stroke: null
+              }),
+            $(go.TextBlock, "transition",  // the label text
+              {
+                textAlign: "center",
+                font: "9pt helvetica, arial, sans-serif",
+                margin: 4,
+                editable: true  // enable in-place editing
+              },
+              // editing the text automatically updates the model data
+              new go.Binding("text").makeTwoWay())
+          )
+        );
+
+      // read in the JSON data from the "mySavedModel" element
+      load();
+    }
+
+    // Show the diagram's model in JSON format
+    function save() {
+      document.getElementById("mySavedModel").value = myDiagram.model.toJson();
+      myDiagram.isModified = false;
+    }
+    function load() {
+      myDiagram.model = go.Model.fromJson(document.getElementById("mySavedModel").value);
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+
+  <div id="sample">
+    <div id="myDiagramDiv" style="border: 1px solid black; width: 100%; height: 460px; background: whitesmoke; position: relative; -webkit-tap-highlight-color: rgba(255, 255, 255, 0);"><canvas tabindex="0" width="1054" height="458" style="position: absolute; top: 0px; left: 0px; z-index: 2; user-select: none; touch-action: none; width: 1054px; height: 458px;">This text is displayed if your browser does not support the Canvas HTML element.</canvas><div style="position: absolute; overflow: auto; width: 1054px; height: 458px; z-index: 1;"><div style="position: absolute; width: 1px; height: 1px;"></div></div></div>
+    <p>
+      This sample creates a state chart to story-board an online shopping experience.
+    </p>
+    <p>
+      The text is editable for both the nodes and the links.
+      The user can draw as many links from one node to another node as desired,
+      and the links can be reshaped or deleted when selected.
+      Double-clicking in the background of the diagram creates a new node.
+      The mouse wheel is set to zoom in and out instead of scroll.
+    </p>
+    <p>
+      This sample customizes the <a href="../api/symbols/Part.html#selectionAdornmentTemplate" target="api">Part.selectionAdornmentTemplate</a>
+      of the node to a template that contains a button
+      The button is positioned to be at the Top-Right corner of the node by
+      being in a Spot Panel with its <a href="../api/symbols/GraphObject.html#alignment" target="api">GraphObject.alignment</a> property set to Spot.TopRight.
+    </p>
+    <p>
+      The Button's <a href="../api/symbols/GraphObject.html#click" target="api">GraphObject.click</a> method creates a new node data,
+      adds it to the model, and creates a link from the original node data to the new node data.
+      All of this is done inside a transaction, so that it can be undone by the user
+      (Ctrl+Z and Ctrl+Y will undo and redo transactions). After the node is created,
+      <a href="../api/symbols/Diagram.html#scrollToRect" target="api">Diagram.scrollToRect</a> is called in case it is off-screen.
+    </p>
+    <div>
+      <div>
+        <button id="SaveButton" onclick="save()" disabled="">Save</button>
+        <button onclick="load()">Load</button>
+        Diagram Model saved in JSON format:
+      </div>
+      <textarea id="mySavedModel" style="width:100%;height:300px">{ "class": "go.GraphLinksModel",
+  "nodeKeyProperty": "id",
+  "nodeDataArray": [
+  {"id":-1, "loc":"155 -138", "category":"Start"},
+  {"id":0, "loc":"190 15", "text":"Shopping"},
+  {"id":1, "loc":"353 32", "text":"Browse Items"},
+  {"id":2, "loc":"353 166", "text":"Search Items"},
+  {"id":3, "loc":"512 12", "text":"View Item"},
+  {"id":4, "loc":"661 17", "text":"View Cart"},
+  {"id":5, "loc":"644 171", "text":"Update Cart"},
+  {"id":6, "loc":"800 96", "text":"Checkout"},
+  {"id":-2, "loc":"757 229", "category":"End"}
+  ],
+  "linkDataArray": [
+    { "from": -1, "to": 0, "text": "Visit online store" },
+    { "from": 0, "to": 1,  "progress": "true", "text": "Browse" },
+    { "from": 0, "to": 2,  "progress": "true", "text": "Use search bar" },
+    { "from": 1, "to": 2,  "progress": "true", "text": "Use search bar" },
+    { "from": 2, "to": 3,  "progress": "true", "text": "Click item" },
+    { "from": 2, "to": 2,  "text": "Another search", "curviness": 20 },
+    { "from": 1, "to": 3,  "progress": "true", "text": "Click item" },
+    { "from": 3, "to": 0,  "text": "Not interested", "curviness": -100 },
+    { "from": 3, "to": 4,  "progress": "true", "text": "Add to cart" },
+    { "from": 4, "to": 0,  "text": "More shopping", "curviness": -150 },
+    { "from": 4, "to": 5,  "text": "Update needed", "curviness": -50 },
+    { "from": 5, "to": 4,  "text": "Update made" },
+    { "from": 4, "to": 6,  "progress": "true", "text": "Proceed" },
+    { "from": 6, "to": 5,  "text": "Update needed" },
+    { "from": 6, "to": -2, "progress": "true", "text": "Purchase made" }
+  ]
+}
+    </textarea>
+    </div>
+  <p class="text-xs">GoJS version 2.3.5. Copyright 1998-2023 by Northwoods Software.</p></div>
+    <p><a href="https://github.com/NorthwoodsSoftware/GoJS/blob/master/samples/stateChart.html" target="_blank">View this sample page's source on GitHub</a></p><pre class=" language-js">
+    <span class="token keyword">function</span> <span class="token function">init</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+
+      <span class="token comment">// Since 2.2 you can also author concise templates with method chaining instead of GraphObject.make</span>
+      <span class="token comment">// For details, see https://gojs.net/latest/intro/buildingObjects.html</span>
+      <span class="token keyword">const</span> $ <span class="token operator">=</span> go<span class="token punctuation">.</span>GraphObject<span class="token punctuation">.</span>make<span class="token punctuation">;</span>  <span class="token comment">// for conciseness in defining templates</span>
+
+      <span class="token comment">// some constants that will be reused within templates</span>
+      <span class="token keyword">var</span> roundedRectangleParams <span class="token operator">=</span> <span class="token punctuation">{</span>
+        parameter1<span class="token operator">:</span> <span class="token number">2</span><span class="token punctuation">,</span>  <span class="token comment">// set the rounded corner</span>
+        spot1<span class="token operator">:</span> go<span class="token punctuation">.</span>Spot<span class="token punctuation">.</span>TopLeft<span class="token punctuation">,</span> spot2<span class="token operator">:</span> go<span class="token punctuation">.</span>Spot<span class="token punctuation">.</span>BottomRight  <span class="token comment">// make content go all the way to inside edges of rounded corners</span>
+      <span class="token punctuation">}</span><span class="token punctuation">;</span>
+
+      myDiagram <span class="token operator">=</span>
+        <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Diagram<span class="token punctuation">,</span> <span class="token string">"myDiagramDiv"</span><span class="token punctuation">,</span>  <span class="token comment">// must name or refer to the DIV HTML element</span>
+          <span class="token punctuation">{</span>
+            <span class="token string">"animationManager.initialAnimationStyle"</span><span class="token operator">:</span> go<span class="token punctuation">.</span>AnimationManager<span class="token punctuation">.</span>None<span class="token punctuation">,</span>
+            <span class="token string">"InitialAnimationStarting"</span><span class="token operator">:</span> <span class="token parameter">e</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span>
+                <span class="token keyword">var</span> animation <span class="token operator">=</span> e<span class="token punctuation">.</span>subject<span class="token punctuation">.</span>defaultAnimation<span class="token punctuation">;</span>
+                animation<span class="token punctuation">.</span>easing <span class="token operator">=</span> go<span class="token punctuation">.</span>Animation<span class="token punctuation">.</span>EaseOutExpo<span class="token punctuation">;</span>
+                animation<span class="token punctuation">.</span>duration <span class="token operator">=</span> <span class="token number">900</span><span class="token punctuation">;</span>
+                animation<span class="token punctuation">.</span><span class="token function">add</span><span class="token punctuation">(</span>e<span class="token punctuation">.</span>diagram<span class="token punctuation">,</span> <span class="token string">'scale'</span><span class="token punctuation">,</span> <span class="token number">0.1</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+                animation<span class="token punctuation">.</span><span class="token function">add</span><span class="token punctuation">(</span>e<span class="token punctuation">.</span>diagram<span class="token punctuation">,</span> <span class="token string">'opacity'</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token punctuation">}</span><span class="token punctuation">,</span>
+
+            <span class="token comment">// have mouse wheel events zoom in and out instead of scroll up and down</span>
+            <span class="token string">"toolManager.mouseWheelBehavior"</span><span class="token operator">:</span> go<span class="token punctuation">.</span>ToolManager<span class="token punctuation">.</span>WheelZoom<span class="token punctuation">,</span>
+            <span class="token comment">// support double-click in background creating a new node</span>
+            <span class="token string">"clickCreatingTool.archetypeNodeData"</span><span class="token operator">:</span> <span class="token punctuation">{</span> text<span class="token operator">:</span> <span class="token string">"new node"</span> <span class="token punctuation">}</span><span class="token punctuation">,</span>
+            <span class="token comment">// enable undo &amp; redo</span>
+            <span class="token string">"undoManager.isEnabled"</span><span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span>
+            <span class="token function-variable function">positionComputation</span><span class="token operator">:</span> <span class="token punctuation">(</span><span class="token parameter">diagram<span class="token punctuation">,</span> pt</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span>
+              <span class="token keyword">return</span> <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Point</span><span class="token punctuation">(</span>Math<span class="token punctuation">.</span><span class="token function">floor</span><span class="token punctuation">(</span>pt<span class="token punctuation">.</span>x<span class="token punctuation">)</span><span class="token punctuation">,</span> Math<span class="token punctuation">.</span><span class="token function">floor</span><span class="token punctuation">(</span>pt<span class="token punctuation">.</span>y<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token punctuation">}</span>
+          <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// when the document is modified, add a "*" to the title and enable the "Save" button</span>
+      myDiagram<span class="token punctuation">.</span><span class="token function">addDiagramListener</span><span class="token punctuation">(</span><span class="token string">"Modified"</span><span class="token punctuation">,</span> <span class="token parameter">e</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span>
+        <span class="token keyword">var</span> button <span class="token operator">=</span> document<span class="token punctuation">.</span><span class="token function">getElementById</span><span class="token punctuation">(</span><span class="token string">"SaveButton"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token keyword">if</span> <span class="token punctuation">(</span>button<span class="token punctuation">)</span> button<span class="token punctuation">.</span>disabled <span class="token operator">=</span> <span class="token operator">!</span>myDiagram<span class="token punctuation">.</span>isModified<span class="token punctuation">;</span>
+        <span class="token keyword">var</span> idx <span class="token operator">=</span> document<span class="token punctuation">.</span>title<span class="token punctuation">.</span><span class="token function">indexOf</span><span class="token punctuation">(</span><span class="token string">"*"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token keyword">if</span> <span class="token punctuation">(</span>myDiagram<span class="token punctuation">.</span>isModified<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+          <span class="token keyword">if</span> <span class="token punctuation">(</span>idx <span class="token operator">&lt;</span> <span class="token number">0</span><span class="token punctuation">)</span> document<span class="token punctuation">.</span>title <span class="token operator">+=</span> <span class="token string">"*"</span><span class="token punctuation">;</span>
+        <span class="token punctuation">}</span> <span class="token keyword">else</span> <span class="token punctuation">{</span>
+          <span class="token keyword">if</span> <span class="token punctuation">(</span>idx <span class="token operator">&gt;=</span> <span class="token number">0</span><span class="token punctuation">)</span> document<span class="token punctuation">.</span>title <span class="token operator">=</span> document<span class="token punctuation">.</span>title<span class="token punctuation">.</span><span class="token function">slice</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> idx<span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token punctuation">}</span>
+      <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// define the Node template</span>
+      myDiagram<span class="token punctuation">.</span>nodeTemplate <span class="token operator">=</span>
+        <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Node<span class="token punctuation">,</span> <span class="token string">"Auto"</span><span class="token punctuation">,</span>
+          <span class="token punctuation">{</span>
+            locationSpot<span class="token operator">:</span> go<span class="token punctuation">.</span>Spot<span class="token punctuation">.</span>Top<span class="token punctuation">,</span>
+            isShadowed<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> shadowBlur<span class="token operator">:</span> <span class="token number">1</span><span class="token punctuation">,</span>
+            shadowOffset<span class="token operator">:</span> <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Point</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+            shadowColor<span class="token operator">:</span> <span class="token string">"rgba(0, 0, 0, .14)"</span>
+          <span class="token punctuation">}</span><span class="token punctuation">,</span>
+          <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Binding</span><span class="token punctuation">(</span><span class="token string">"location"</span><span class="token punctuation">,</span> <span class="token string">"loc"</span><span class="token punctuation">,</span> go<span class="token punctuation">.</span>Point<span class="token punctuation">.</span>parse<span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">makeTwoWay</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Point<span class="token punctuation">.</span>stringify<span class="token punctuation">)</span><span class="token punctuation">,</span>
+          <span class="token comment">// define the node's outer shape, which will surround the TextBlock</span>
+          <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Shape<span class="token punctuation">,</span> <span class="token string">"RoundedRectangle"</span><span class="token punctuation">,</span> roundedRectangleParams<span class="token punctuation">,</span>
+            <span class="token punctuation">{</span>
+              name<span class="token operator">:</span> <span class="token string">"SHAPE"</span><span class="token punctuation">,</span> fill<span class="token operator">:</span> <span class="token string">"#ffffff"</span><span class="token punctuation">,</span> strokeWidth<span class="token operator">:</span> <span class="token number">0</span><span class="token punctuation">,</span>
+              stroke<span class="token operator">:</span> <span class="token keyword">null</span><span class="token punctuation">,</span>
+              portId<span class="token operator">:</span> <span class="token string">""</span><span class="token punctuation">,</span>  <span class="token comment">// this Shape is the Node's port, not the whole Node</span>
+              fromLinkable<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> fromLinkableSelfNode<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> fromLinkableDuplicates<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span>
+              toLinkable<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> toLinkableSelfNode<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> toLinkableDuplicates<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span>
+              cursor<span class="token operator">:</span> <span class="token string">"pointer"</span>
+            <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+          <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>TextBlock<span class="token punctuation">,</span>
+            <span class="token punctuation">{</span>
+              font<span class="token operator">:</span> <span class="token string">"bold small-caps 11pt helvetica, bold arial, sans-serif"</span><span class="token punctuation">,</span> margin<span class="token operator">:</span> <span class="token number">7</span><span class="token punctuation">,</span> stroke<span class="token operator">:</span> <span class="token string">"rgba(0, 0, 0, .87)"</span><span class="token punctuation">,</span>
+              editable<span class="token operator">:</span> <span class="token boolean">true</span>  <span class="token comment">// editing the text automatically updates the model data</span>
+            <span class="token punctuation">}</span><span class="token punctuation">,</span>
+            <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Binding</span><span class="token punctuation">(</span><span class="token string">"text"</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">makeTwoWay</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+
+      <span class="token comment">// unlike the normal selection Adornment, this one includes a Button</span>
+      myDiagram<span class="token punctuation">.</span>nodeTemplate<span class="token punctuation">.</span>selectionAdornmentTemplate <span class="token operator">=</span>
+        <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Adornment<span class="token punctuation">,</span> <span class="token string">"Spot"</span><span class="token punctuation">,</span>
+          <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Panel<span class="token punctuation">,</span> <span class="token string">"Auto"</span><span class="token punctuation">,</span>
+            <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Shape<span class="token punctuation">,</span> <span class="token string">"RoundedRectangle"</span><span class="token punctuation">,</span> roundedRectangleParams<span class="token punctuation">,</span>
+            <span class="token punctuation">{</span> fill<span class="token operator">:</span> <span class="token keyword">null</span><span class="token punctuation">,</span> stroke<span class="token operator">:</span> <span class="token string">"#7986cb"</span><span class="token punctuation">,</span> strokeWidth<span class="token operator">:</span> <span class="token number">3</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+            <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Placeholder<span class="token punctuation">)</span>  <span class="token comment">// a Placeholder sizes itself to the selected Node</span>
+          <span class="token punctuation">)</span><span class="token punctuation">,</span>
+          <span class="token comment">// the button to create a "next" node, at the top-right corner</span>
+          <span class="token function">$</span><span class="token punctuation">(</span><span class="token string">"Button"</span><span class="token punctuation">,</span>
+            <span class="token punctuation">{</span>
+              alignment<span class="token operator">:</span> go<span class="token punctuation">.</span>Spot<span class="token punctuation">.</span>TopRight<span class="token punctuation">,</span>
+              click<span class="token operator">:</span> addNodeAndLink  <span class="token comment">// this function is defined below</span>
+            <span class="token punctuation">}</span><span class="token punctuation">,</span>
+            <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Shape<span class="token punctuation">,</span> <span class="token string">"PlusLine"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span> width<span class="token operator">:</span> <span class="token number">6</span><span class="token punctuation">,</span> height<span class="token operator">:</span> <span class="token number">6</span> <span class="token punctuation">}</span><span class="token punctuation">)</span>
+          <span class="token punctuation">)</span> <span class="token comment">// end button</span>
+        <span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// end Adornment</span>
+
+      myDiagram<span class="token punctuation">.</span>nodeTemplateMap<span class="token punctuation">.</span><span class="token function">add</span><span class="token punctuation">(</span><span class="token string">"Start"</span><span class="token punctuation">,</span>
+        <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Node<span class="token punctuation">,</span> <span class="token string">"Spot"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span> desiredSize<span class="token operator">:</span> <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Size</span><span class="token punctuation">(</span><span class="token number">75</span><span class="token punctuation">,</span> <span class="token number">75</span><span class="token punctuation">)</span> <span class="token punctuation">}</span><span class="token punctuation">,</span>
+          <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Binding</span><span class="token punctuation">(</span><span class="token string">"location"</span><span class="token punctuation">,</span> <span class="token string">"loc"</span><span class="token punctuation">,</span> go<span class="token punctuation">.</span>Point<span class="token punctuation">.</span>parse<span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">makeTwoWay</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Point<span class="token punctuation">.</span>stringify<span class="token punctuation">)</span><span class="token punctuation">,</span>
+          <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Shape<span class="token punctuation">,</span> <span class="token string">"Circle"</span><span class="token punctuation">,</span>
+            <span class="token punctuation">{</span>
+              fill<span class="token operator">:</span> <span class="token string">"#52ce60"</span><span class="token punctuation">,</span> <span class="token comment">/* green */</span>
+              stroke<span class="token operator">:</span> <span class="token keyword">null</span><span class="token punctuation">,</span>
+              portId<span class="token operator">:</span> <span class="token string">""</span><span class="token punctuation">,</span>
+              fromLinkable<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> fromLinkableSelfNode<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> fromLinkableDuplicates<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span>
+              toLinkable<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> toLinkableSelfNode<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> toLinkableDuplicates<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span>
+              cursor<span class="token operator">:</span> <span class="token string">"pointer"</span>
+            <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+          <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>TextBlock<span class="token punctuation">,</span> <span class="token string">"Start"</span><span class="token punctuation">,</span>
+            <span class="token punctuation">{</span>
+              font<span class="token operator">:</span> <span class="token string">"bold 16pt helvetica, bold arial, sans-serif"</span><span class="token punctuation">,</span>
+              stroke<span class="token operator">:</span> <span class="token string">"whitesmoke"</span>
+            <span class="token punctuation">}</span><span class="token punctuation">)</span>
+        <span class="token punctuation">)</span>
+      <span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      myDiagram<span class="token punctuation">.</span>nodeTemplateMap<span class="token punctuation">.</span><span class="token function">add</span><span class="token punctuation">(</span><span class="token string">"End"</span><span class="token punctuation">,</span>
+        <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Node<span class="token punctuation">,</span> <span class="token string">"Spot"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span> desiredSize<span class="token operator">:</span> <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Size</span><span class="token punctuation">(</span><span class="token number">75</span><span class="token punctuation">,</span> <span class="token number">75</span><span class="token punctuation">)</span> <span class="token punctuation">}</span><span class="token punctuation">,</span>
+          <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Binding</span><span class="token punctuation">(</span><span class="token string">"location"</span><span class="token punctuation">,</span> <span class="token string">"loc"</span><span class="token punctuation">,</span> go<span class="token punctuation">.</span>Point<span class="token punctuation">.</span>parse<span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">makeTwoWay</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Point<span class="token punctuation">.</span>stringify<span class="token punctuation">)</span><span class="token punctuation">,</span>
+          <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Shape<span class="token punctuation">,</span> <span class="token string">"Circle"</span><span class="token punctuation">,</span>
+            <span class="token punctuation">{</span>
+              fill<span class="token operator">:</span> <span class="token string">"maroon"</span><span class="token punctuation">,</span>
+              stroke<span class="token operator">:</span> <span class="token keyword">null</span><span class="token punctuation">,</span>
+              portId<span class="token operator">:</span> <span class="token string">""</span><span class="token punctuation">,</span>
+              fromLinkable<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> fromLinkableSelfNode<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> fromLinkableDuplicates<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span>
+              toLinkable<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> toLinkableSelfNode<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> toLinkableDuplicates<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span>
+              cursor<span class="token operator">:</span> <span class="token string">"pointer"</span>
+            <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+          <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Shape<span class="token punctuation">,</span> <span class="token string">"Circle"</span><span class="token punctuation">,</span> <span class="token punctuation">{</span> fill<span class="token operator">:</span> <span class="token keyword">null</span><span class="token punctuation">,</span> desiredSize<span class="token operator">:</span> <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Size</span><span class="token punctuation">(</span><span class="token number">65</span><span class="token punctuation">,</span> <span class="token number">65</span><span class="token punctuation">)</span><span class="token punctuation">,</span> strokeWidth<span class="token operator">:</span> <span class="token number">2</span><span class="token punctuation">,</span> stroke<span class="token operator">:</span> <span class="token string">"whitesmoke"</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+          <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>TextBlock<span class="token punctuation">,</span> <span class="token string">"End"</span><span class="token punctuation">,</span>
+            <span class="token punctuation">{</span>
+              font<span class="token operator">:</span> <span class="token string">"bold 16pt helvetica, bold arial, sans-serif"</span><span class="token punctuation">,</span>
+              stroke<span class="token operator">:</span> <span class="token string">"whitesmoke"</span>
+            <span class="token punctuation">}</span><span class="token punctuation">)</span>
+        <span class="token punctuation">)</span>
+      <span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// clicking the button inserts a new node to the right of the selected node,</span>
+      <span class="token comment">// and adds a link to that new node</span>
+      <span class="token keyword">function</span> <span class="token function">addNodeAndLink</span><span class="token punctuation">(</span><span class="token parameter">e<span class="token punctuation">,</span> obj</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token keyword">var</span> adornment <span class="token operator">=</span> obj<span class="token punctuation">.</span>part<span class="token punctuation">;</span>
+        <span class="token keyword">var</span> diagram <span class="token operator">=</span> e<span class="token punctuation">.</span>diagram<span class="token punctuation">;</span>
+        diagram<span class="token punctuation">.</span><span class="token function">startTransaction</span><span class="token punctuation">(</span><span class="token string">"Add State"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+        <span class="token comment">// get the node data for which the user clicked the button</span>
+        <span class="token keyword">var</span> fromNode <span class="token operator">=</span> adornment<span class="token punctuation">.</span>adornedPart<span class="token punctuation">;</span>
+        <span class="token keyword">var</span> fromData <span class="token operator">=</span> fromNode<span class="token punctuation">.</span>data<span class="token punctuation">;</span>
+        <span class="token comment">// create a new "State" data object, positioned off to the right of the adorned Node</span>
+        <span class="token keyword">var</span> toData <span class="token operator">=</span> <span class="token punctuation">{</span> text<span class="token operator">:</span> <span class="token string">"new"</span> <span class="token punctuation">}</span><span class="token punctuation">;</span>
+        <span class="token keyword">var</span> p <span class="token operator">=</span> fromNode<span class="token punctuation">.</span>location<span class="token punctuation">.</span><span class="token function">copy</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        p<span class="token punctuation">.</span>x <span class="token operator">+=</span> <span class="token number">200</span><span class="token punctuation">;</span>
+        toData<span class="token punctuation">.</span>loc <span class="token operator">=</span> go<span class="token punctuation">.</span>Point<span class="token punctuation">.</span><span class="token function">stringify</span><span class="token punctuation">(</span>p<span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// the "loc" property is a string, not a Point object</span>
+        <span class="token comment">// add the new node data to the model</span>
+        <span class="token keyword">var</span> model <span class="token operator">=</span> diagram<span class="token punctuation">.</span>model<span class="token punctuation">;</span>
+        model<span class="token punctuation">.</span><span class="token function">addNodeData</span><span class="token punctuation">(</span>toData<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+        <span class="token comment">// create a link data from the old node data to the new node data</span>
+        <span class="token keyword">var</span> linkdata <span class="token operator">=</span> <span class="token punctuation">{</span>
+          from<span class="token operator">:</span> model<span class="token punctuation">.</span><span class="token function">getKeyForNodeData</span><span class="token punctuation">(</span>fromData<span class="token punctuation">)</span><span class="token punctuation">,</span>  <span class="token comment">// or just: fromData.id</span>
+          to<span class="token operator">:</span> model<span class="token punctuation">.</span><span class="token function">getKeyForNodeData</span><span class="token punctuation">(</span>toData<span class="token punctuation">)</span><span class="token punctuation">,</span>
+          text<span class="token operator">:</span> <span class="token string">"transition"</span>
+        <span class="token punctuation">}</span><span class="token punctuation">;</span>
+        <span class="token comment">// and add the link data to the model</span>
+        model<span class="token punctuation">.</span><span class="token function">addLinkData</span><span class="token punctuation">(</span>linkdata<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+        <span class="token comment">// select the new Node</span>
+        <span class="token keyword">var</span> newnode <span class="token operator">=</span> diagram<span class="token punctuation">.</span><span class="token function">findNodeForData</span><span class="token punctuation">(</span>toData<span class="token punctuation">)</span><span class="token punctuation">;</span>
+        diagram<span class="token punctuation">.</span><span class="token function">select</span><span class="token punctuation">(</span>newnode<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+        diagram<span class="token punctuation">.</span><span class="token function">commitTransaction</span><span class="token punctuation">(</span><span class="token string">"Add State"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+        <span class="token comment">// if the new node is off-screen, scroll the diagram to show the new node</span>
+        diagram<span class="token punctuation">.</span><span class="token function">scrollToRect</span><span class="token punctuation">(</span>newnode<span class="token punctuation">.</span>actualBounds<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token punctuation">}</span>
+
+      <span class="token comment">// replace the default Link template in the linkTemplateMap</span>
+      myDiagram<span class="token punctuation">.</span>linkTemplate <span class="token operator">=</span>
+        <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Link<span class="token punctuation">,</span>  <span class="token comment">// the whole link panel</span>
+          <span class="token punctuation">{</span>
+            curve<span class="token operator">:</span> go<span class="token punctuation">.</span>Link<span class="token punctuation">.</span>Bezier<span class="token punctuation">,</span>
+            adjusting<span class="token operator">:</span> go<span class="token punctuation">.</span>Link<span class="token punctuation">.</span>Stretch<span class="token punctuation">,</span>
+            reshapable<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> relinkableFrom<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> relinkableTo<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span>
+            toShortLength<span class="token operator">:</span> <span class="token number">3</span>
+          <span class="token punctuation">}</span><span class="token punctuation">,</span>
+          <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Binding</span><span class="token punctuation">(</span><span class="token string">"points"</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">makeTwoWay</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+          <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Binding</span><span class="token punctuation">(</span><span class="token string">"curviness"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+          <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Shape<span class="token punctuation">,</span>  <span class="token comment">// the link shape</span>
+            <span class="token punctuation">{</span> strokeWidth<span class="token operator">:</span> <span class="token number">1.5</span> <span class="token punctuation">}</span><span class="token punctuation">,</span>
+            <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Binding</span><span class="token punctuation">(</span><span class="token string">'stroke'</span><span class="token punctuation">,</span> <span class="token string">'progress'</span><span class="token punctuation">,</span> <span class="token parameter">progress</span> <span class="token operator">=&gt;</span> progress <span class="token operator">?</span> <span class="token string">"#52ce60"</span> <span class="token comment">/* green */</span> <span class="token operator">:</span> <span class="token string">'black'</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+            <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Binding</span><span class="token punctuation">(</span><span class="token string">'strokeWidth'</span><span class="token punctuation">,</span> <span class="token string">'progress'</span><span class="token punctuation">,</span> <span class="token parameter">progress</span> <span class="token operator">=&gt;</span> progress <span class="token operator">?</span> <span class="token number">2.5</span> <span class="token operator">:</span> <span class="token number">1.5</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+          <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Shape<span class="token punctuation">,</span>  <span class="token comment">// the arrowhead</span>
+            <span class="token punctuation">{</span> toArrow<span class="token operator">:</span> <span class="token string">"standard"</span><span class="token punctuation">,</span> stroke<span class="token operator">:</span> <span class="token keyword">null</span> <span class="token punctuation">}</span><span class="token punctuation">,</span>
+            <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Binding</span><span class="token punctuation">(</span><span class="token string">'fill'</span><span class="token punctuation">,</span> <span class="token string">'progress'</span><span class="token punctuation">,</span> <span class="token parameter">progress</span> <span class="token operator">=&gt;</span> progress <span class="token operator">?</span> <span class="token string">"#52ce60"</span> <span class="token comment">/* green */</span> <span class="token operator">:</span> <span class="token string">'black'</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+          <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Panel<span class="token punctuation">,</span> <span class="token string">"Auto"</span><span class="token punctuation">,</span>
+            <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Shape<span class="token punctuation">,</span>  <span class="token comment">// the label background, which becomes transparent around the edges</span>
+              <span class="token punctuation">{</span>
+                fill<span class="token operator">:</span> <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>Brush<span class="token punctuation">,</span> <span class="token string">"Radial"</span><span class="token punctuation">,</span>
+                  <span class="token punctuation">{</span> <span class="token number">0</span><span class="token operator">:</span> <span class="token string">"rgb(245, 245, 245)"</span><span class="token punctuation">,</span> <span class="token number">0.7</span><span class="token operator">:</span> <span class="token string">"rgb(245, 245, 245)"</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token operator">:</span> <span class="token string">"rgba(245, 245, 245, 0)"</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+                stroke<span class="token operator">:</span> <span class="token keyword">null</span>
+              <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+            <span class="token function">$</span><span class="token punctuation">(</span>go<span class="token punctuation">.</span>TextBlock<span class="token punctuation">,</span> <span class="token string">"transition"</span><span class="token punctuation">,</span>  <span class="token comment">// the label text</span>
+              <span class="token punctuation">{</span>
+                textAlign<span class="token operator">:</span> <span class="token string">"center"</span><span class="token punctuation">,</span>
+                font<span class="token operator">:</span> <span class="token string">"9pt helvetica, arial, sans-serif"</span><span class="token punctuation">,</span>
+                margin<span class="token operator">:</span> <span class="token number">4</span><span class="token punctuation">,</span>
+                editable<span class="token operator">:</span> <span class="token boolean">true</span>  <span class="token comment">// enable in-place editing</span>
+              <span class="token punctuation">}</span><span class="token punctuation">,</span>
+              <span class="token comment">// editing the text automatically updates the model data</span>
+              <span class="token keyword">new</span> <span class="token class-name">go<span class="token punctuation">.</span>Binding</span><span class="token punctuation">(</span><span class="token string">"text"</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">makeTwoWay</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+          <span class="token punctuation">)</span>
+        <span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// read in the JSON data from the "mySavedModel" element</span>
+      <span class="token function">load</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+
+    <span class="token comment">// Show the diagram's model in JSON format</span>
+    <span class="token keyword">function</span> <span class="token function">save</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      document<span class="token punctuation">.</span><span class="token function">getElementById</span><span class="token punctuation">(</span><span class="token string">"mySavedModel"</span><span class="token punctuation">)</span><span class="token punctuation">.</span>value <span class="token operator">=</span> myDiagram<span class="token punctuation">.</span>model<span class="token punctuation">.</span><span class="token function">toJson</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+      myDiagram<span class="token punctuation">.</span>isModified <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">function</span> <span class="token function">load</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      myDiagram<span class="token punctuation">.</span>model <span class="token operator">=</span> go<span class="token punctuation">.</span>Model<span class="token punctuation">.</span><span class="token function">fromJson</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span><span class="token function">getElementById</span><span class="token punctuation">(</span><span class="token string">"mySavedModel"</span><span class="token punctuation">)</span><span class="token punctuation">.</span>value<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+
+    window<span class="token punctuation">.</span><span class="token function">addEventListener</span><span class="token punctuation">(</span><span class="token string">'DOMContentLoaded'</span><span class="token punctuation">,</span> init<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  </pre></div>
+  </body>
+  </html>
