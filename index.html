@@ -16,6 +16,10 @@
             font-size: 12px;
         }
 
+        .highlight {
+            background-color: #aeaaa4;
+        }
+
         #inDiv {
             padding: 8px;
             margin-bottom: 32px;
@@ -32,6 +36,9 @@
         #search {
             width: 60%;
             background-color: #bbc9b3;
+        }
+        #results {
+            margin-top: 20px;
         }
 
     </style>
@@ -92,6 +99,8 @@
             const reJira = new RegExp(`(?:\\W|^)([A-Z]{3}-\\d+)(?:\\W|$)`, 'gi');
             const ctLen = 60;
 
+            if(query.trim() == "") return;
+
             for(let key in mem.nodes) {
                 let sentence = mem.nodes[key].text; 
 
@@ -100,10 +109,18 @@
                     const matchIndex = match.index;
                     const startIndex = Math.max(0, matchIndex - ctLen);
                     const endIndex = Math.min(sentence.length, matchIndex + match[0].length + ctLen);
-                    const context = {'id': key, 'text': sentence.substring(startIndex, endIndex)};
+                    
+
+                    const beforeMatch = contextText.substring(0, matchIndex - startIndex);
+                    const matchedTerm = contextText.substring(matchIndex - startIndex, matchIndex - startIndex + match[0].length);
+                    const afterMatch = contextText.substring(matchIndex - startIndex + match[0].length);
 
                     //context = context.replace(new RegExp(match[1], 'gi'), `<a href="#">${match[1]}</a>`);
-        
+                    //const context = {'id': key, 'text': sentence.substring(startIndex, endIndex)};
+                    const context = {
+                        'id': key,
+                        'text': beforeMatch + '<span class="highlight">' + matchedTerm + '</span>' + afterMatch
+                    };
 
                     results.push(context);
                 }
@@ -120,7 +137,7 @@
 <div>
     <input id="search" type="text" />
 </div>
-<div>
+<div id="results">
     <span id="searchResults">&nbsp;</span>
 </div>
 <div>
