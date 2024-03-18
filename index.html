@@ -109,8 +109,8 @@
                     const matchIndex = match.index;
                     const startIndex = Math.max(0, matchIndex - ctLen);
                     const endIndex = Math.min(sentence.length, matchIndex + match[0].length + ctLen);
+                    const contextText = sentence.substring(startIndex, endIndex);
                     
-
                     const beforeMatch = contextText.substring(0, matchIndex - startIndex);
                     const matchedTerm = contextText.substring(matchIndex - startIndex, matchIndex - startIndex + match[0].length);
                     const afterMatch = contextText.substring(matchIndex - startIndex + match[0].length);
