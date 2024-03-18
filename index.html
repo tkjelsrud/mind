@@ -27,6 +27,7 @@
             height: 40px;
             background-color: #bbc9b3;
             /*visibility: hidden;*/
+            display: none;
         }
         #search {
             width: 60%;
@@ -89,7 +90,7 @@
             const results = [];
             const regex = new RegExp(`(?:\\W|^)(\\S*${query}\\S*)(?:\\W|$)`, 'gi');
             const reJira = new RegExp(`(?:\\W|^)([A-Z]{3}-\\d+)(?:\\W|$)`, 'gi');
-            const ctLen = 40;
+            const ctLen = 60;
 
             for(let key in mem.nodes) {
                 let sentence = mem.nodes[key].text; 
