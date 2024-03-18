@@ -1,21 +1,36 @@
 <html>
 <head>
+    <title>idiot</title>
     <style>
+        /*
+        #646f62	
+        #95a59f
+        #aeaaa4
+        #bbc9b3
+        #f6f5f3
+        */
         body {
-            background-color: black;
+            background-color: #646f62;
             color: white;
-            font-family: sans-serif;
+            font-family: 'Courier';
+            font-size: 12px;
         }
 
         #inDiv {
             padding: 8px;
             margin-bottom: 32px;
+            
         }
         
         #inData {
             width: 60%;
             height: 40px;
-            background-color: grey;
+            background-color: #bbc9b3;
+            visibility: hidden;
+        }
+        #search {
+            width: 60%;
+            background-color: #bbc9b3;
         }
 
     </style>
@@ -36,25 +51,64 @@
             let data = document.getElementById("inData").value;
 
             mem.saveNode({'id': mem.nextId(), 'text': data, 'date': new Date()});
-
             document.getElementById("inData").value = "";
+        }
+
+        function textSearchNodes(query) {
+            const results = [];
+            const regex = new RegExp(`(?:\\W|^)(\\S*${query}\\S*)(?:\\W|$)`, 'gi');
+            
+            for(let key in mem.nodes) {
+                let sentence = mem.nodes[key];
+
+                let match;
+                while ((match = regex.exec(sentence)) !== null) {
+                    const matchIndex = match.index;
+                    const startIndex = Math.max(0, matchIndex - numWordsBefore);
+                    const endIndex = Math.min(sentence.length, matchIndex + match[0].length + numWordsAfter);
+                    const context = sentence.substring(startIndex, endIndex);
+                    results.push(context);
+                }
+            }
+
+            return results;
         }
     </script>
 
 </head>
 
 <body>
-<p>Hello world</p>
-<div id="inDiv">
-    <input id="inData" />
+<p>id*ot</p>
+<div>
+    <input id="search" type="text" />
+</div>
+<div>
+    <span id="searchResults">&nbsp;</span>
+</div>
+<div>
+    <textarea id="inData"></textarea>
 </div>
 <script type="text/javascript">
     let input = document.getElementById("inData");
-    input.focus();
+
     input.addEventListener("keypress", function(event) {
         if (event.key === "Enter") {
             event.preventDefault();
             readInputData();
+        }
+    });
+
+    let search = document.getElementById("search");
+
+    search.focus();
+
+    search.addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            
+            let results = textSearchNodes(search.value);
+
+            document.getElementById("searchResults").innerText = results.join("<br/>");
         }
     });
 
