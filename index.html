@@ -26,7 +26,7 @@
             width: 60%;
             height: 40px;
             background-color: #bbc9b3;
-            visibility: hidden;
+            /*visibility: hidden;*/
         }
         #search {
             width: 60%;
@@ -50,23 +50,60 @@
         function readInputData() {
             let data = document.getElementById("inData").value;
 
-            mem.saveNode({'id': mem.nextId(), 'text': data, 'date': new Date()});
-            document.getElementById("inData").value = "";
+            data = data.trim();
+
+            let hash = generateHash(data);
+
+            if(!hashInMem(hash)) {
+                mem.saveNode({'id': mem.nextId(), 'text': data, 'date': new Date(), 'hash': generateHash(data)});
+                document.getElementById("inData").value = "";
+                console.log('Input data added to index');
+            }
+            else {
+                console.log('Input data already in index');
+            }
+        }
+
+        function generateHash(str) {
+            // This is a simple example of a hash function, you might need to use a more robust one
+            let hash = 0;
+            if (str.length == 0) return hash;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash |= 0; // Convert to 32bit integer
+            }
+            return hash;
+        }
+
+        function hashInMem(hash) {
+            for(let key in mem.nodes) {
+                if('hash' in mem.nodes[key] && hash == mem.nodes[key].hash)
+                    return true;
+            }
+
+            return false;
         }
 
         function textSearchNodes(query) {
             const results = [];
             const regex = new RegExp(`(?:\\W|^)(\\S*${query}\\S*)(?:\\W|$)`, 'gi');
-            
+            const reJira = new RegExp(`(?:\\W|^)([A-Z]{3}-\\d+)(?:\\W|$)`, 'gi');
+            const ctLen = 40;
+
             for(let key in mem.nodes) {
-                let sentence = mem.nodes[key];
+                let sentence = mem.nodes[key].text; 
 
                 let match;
                 while ((match = regex.exec(sentence)) !== null) {
                     const matchIndex = match.index;
-                    const startIndex = Math.max(0, matchIndex - numWordsBefore);
-                    const endIndex = Math.min(sentence.length, matchIndex + match[0].length + numWordsAfter);
-                    const context = sentence.substring(startIndex, endIndex);
+                    const startIndex = Math.max(0, matchIndex - ctLen);
+                    const endIndex = Math.min(sentence.length, matchIndex + match[0].length + ctLen);
+                    const context = {'id': key, 'text': sentence.substring(startIndex, endIndex)};
+
+                    //context = context.replace(new RegExp(match[1], 'gi'), `<a href="#">${match[1]}</a>`);
+        
+
                     results.push(context);
                 }
             }
@@ -107,12 +144,35 @@
             event.preventDefault();
             
             let results = textSearchNodes(search.value);
+            document.getElementById("searchResults").innerHTML = "";
 
-            document.getElementById("searchResults").innerText = results.join("<br/>");
+            results.forEach(match => {
+                document.getElementById("searchResults").innerHTML += "(" + match.id + ") " + match.text + "<br/>";
+            });
+
+            
         }
     });
 
-    listNodes();
+    window.addEventListener("paste", (event) => {
+        event.preventDefault();
+
+        let paste = (event.clipboardData || window.clipboardData).getData("text");
+        paste = paste.trim();
+
+        let hash = generateHash(paste);
+
+        if(!hashInMem(hash)) {
+            mem.saveNode({'id': mem.nextId(), 'text': paste, 'date': new Date(), 'hash': generateHash(paste)});
+            document.getElementById("inData").value = "";
+            console.log('Paste data added to index');
+        }
+        else {
+            console.log('Paste data already in index');
+        }
+    });
+
+    //listNodes();
 </script>
 </body>
 </html>
