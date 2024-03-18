@@ -115,7 +115,6 @@
                     const startIndex = Math.max(0, matchIndex - ctLen);
                     const endIndex = Math.min(sentence.length, matchIndex + match[0].length + ctLen);
                     let contextText = sentence.substring(startIndex, endIndex);
-                    contextText = processText(contextText);
                     
                     const beforeMatch = contextText.substring(0, matchIndex - startIndex);
                     const matchedTerm = contextText.substring(matchIndex - startIndex, matchIndex - startIndex + match[0].length);
@@ -171,7 +170,8 @@
             document.getElementById("searchResults").innerHTML = "";
 
             results.forEach(match => {
-                document.getElementById("searchResults").innerHTML += "(" + match.id + ") " + match.text + "<br/>";
+                let txt = processText(match.text);
+                document.getElementById("searchResults").innerHTML += "(" + match.id + ") " + txt + "<br/>";
             });
 
             
