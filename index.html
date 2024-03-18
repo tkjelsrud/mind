@@ -187,9 +187,11 @@
         let hash = generateHash(paste);
 
         if(!hashInMem(hash)) {
-            mem.saveNode({'id': mem.nextId(), 'text': paste, 'date': new Date(), 'hash': generateHash(paste)});
-            document.getElementById("inData").value = "";
-            console.log('Paste data added to index');
+            if(confirm("Add to index?")) {
+                mem.saveNode({'id': mem.nextId(), 'text': paste, 'date': new Date(), 'hash': generateHash(paste), 'len': paste.length});
+                document.getElementById("inData").value = "";
+                console.log('Paste data added to index');
+            }
         }
         else {
             console.log('Paste data already in index');
