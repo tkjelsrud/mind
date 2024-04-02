@@ -126,7 +126,7 @@
                     const context = {
                         'id': key,
                         'idx': matchIndex,
-                        'text': beforeMatch + '<span class="highlight" onclick="showDetails(' + key + ', ' + idx + ')">' + matchedTerm + '</span>' + afterMatch
+                        'text': beforeMatch + '<span class="highlight" onclick="showDetails(' + key + ', ' + matchIndex + ')">' + matchedTerm + '</span>' + afterMatch
                     };
 
                     results.push(context);
@@ -181,7 +181,7 @@
     });
 
     window.addEventListener("paste", (event) => {
-        if(search.hasFocus()) return;
+        if (search === document.activeElement) return;
 
         event.preventDefault();
 
