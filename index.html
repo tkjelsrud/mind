@@ -150,6 +150,8 @@
 <div>
     <textarea id="inData"></textarea>
 </div>
+<div id="details">
+</div>
 <script type="text/javascript">
     let input = document.getElementById("inData");
 
@@ -215,7 +217,13 @@
     }
 
     function showDetails(id, idx) {
-        alert("TEST " + id + " " + idx)
+        let nText = mem.nodes[key].text;
+
+        const startIndex = Math.max(0, idx - 800);
+        const endIndex   = Math.min(nText.length, idx + 800);
+        let contextText  = nText.substring(startIndex, endIndex);
+        
+        document.getElementById("details").innerHTML = "<p>" + contextText + "</p>";
     }
 </script>
 </body>
