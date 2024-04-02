@@ -179,6 +179,8 @@
     });
 
     window.addEventListener("paste", (event) => {
+        if(search.hasFocus()) return;
+
         event.preventDefault();
 
         let paste = (event.clipboardData || window.clipboardData).getData("text");
