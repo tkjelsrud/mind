@@ -62,9 +62,7 @@
 
         function readInputData() {
             let data = document.getElementById("inData").value;
-
             data = data.trim();
-
             let hash = generateHash(data);
 
             if(!hashInMem(hash)) {
@@ -119,9 +117,6 @@
                     const beforeMatch = contextText.substring(0, matchIndex - startIndex);
                     const matchedTerm = contextText.substring(matchIndex - startIndex, matchIndex - startIndex + match[0].length);
                     const afterMatch = contextText.substring(matchIndex - startIndex + match[0].length);
-
-                    //context = context.replace(new RegExp(match[1], 'gi'), `<a href="#">${match[1]}</a>`);
-                    //const context = {'id': key, 'text': sentence.substring(startIndex, endIndex)};
 
                     const context = {
                         'id': key,
@@ -203,8 +198,6 @@
             console.log('Paste data already in index');
         }
     });
-
-    //listNodes();
 </script>
 <script src="lib/rules.js"></script>
 <script type="text/javascript">
@@ -223,7 +216,7 @@
         const endIndex   = Math.min(nText.length, idx + 800);
         let contextText  = nText.substring(startIndex, endIndex);
 
-        document.getElementById("details").innerHTML = "<p>" + contextText + "</p>";
+        document.getElementById("details").innerHTML = "<p>" + processText(contextText) + "</p>";
     }
 </script>
 </body>
