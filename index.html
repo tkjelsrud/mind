@@ -122,9 +122,11 @@
 
                     //context = context.replace(new RegExp(match[1], 'gi'), `<a href="#">${match[1]}</a>`);
                     //const context = {'id': key, 'text': sentence.substring(startIndex, endIndex)};
+
                     const context = {
                         'id': key,
-                        'text': beforeMatch + '<span class="highlight">' + matchedTerm + '</span>' + afterMatch
+                        'idx': matchIndex,
+                        'text': beforeMatch + '<span class="highlight" onclick="showDetails(' + key + ', ' + idx + ')">' + matchedTerm + '</span>' + afterMatch
                     };
 
                     results.push(context);
@@ -210,6 +212,10 @@
             processedText = processedText.replace(rule.match, rule.replace);
         });
         return processedText;
+    }
+
+    function showDetails(id, idx) {
+        alert("TEST " + id + " " + idx)
     }
 </script>
 </body>
